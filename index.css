@@ -1,0 +1,19 @@
+body {
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none; /* <script src='p5.min.js'></script> linear-gradient(red, yellow);*/
+  margin: 0;
+}
+
+html,
+body {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+.canvas {
+  position: absolute;
+  left: 100%;
+  top: 100%;
+}
