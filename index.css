@@ -17,3 +17,12 @@ body {
   left: 100%;
   top: 100%;
 }
+
+#sidebar {
+  border-right: 1px solid black;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+}
