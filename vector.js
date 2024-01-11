@@ -19,15 +19,22 @@ class Vector {
   normalize() {
     this.x /= this.magnitude;
     this.y /= this.magnitude;
+    return this;
   }
 
   multiply(scalar) {
     this.x *= scalar.x ?? scalar;
     this.y *= scalar.y ?? scalar;
+    return this;
   }
   add(scalar) {
     this.x += scalar.x ?? scalar;
     this.y += scalar.y ?? scalar;
+    return this;
+  }
+
+  static distance(v1, v2) {
+    return Math.sqrt((v2.x - v1.x) ** 2 + (v2.y - v1.y) ** 2);
   }
 
   static subtract(v1, v2) {

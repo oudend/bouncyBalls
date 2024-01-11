@@ -7,11 +7,10 @@ function uuidv4() {
   );
 }
 
-acceleration = new Vector(0, 0);
+acceleration = new Vector(0, 9.82);
 bounceCoefficient = 0.3;
 
 //? TODO:
-// Use p5.js vector class and use it in calculations.
 // fix weird collisions
 // add different collision types(merge and such)
 // get better quadtree maybe?

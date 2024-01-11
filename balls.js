@@ -77,8 +77,8 @@ class bouncyBallHandler {
     var myObject = {
       x: ball.position.x,
       y: ball.position.y,
-      width: ball.radius + 20, //TODO!:FIX
-      height: ball.radius + 20, //TODO!:FIX
+      width: ball.radius,
+      height: ball.radius,
       radius: ball.radius,
       index: index,
       uuid: ball.uuid,
@@ -112,42 +112,110 @@ class bouncyBallHandler {
     return Vector.subtract(ball.velocity, positionDiff);
   }
 
+  // resolveCollision(ballA, ballB) {
+  //   let ballAvelocity = this.calculateVelocity(ballA, ballB);
+  //   ballB.velocity = this.calculateVelocity(ballB, ballA);
+
+  //   ballA.velocity = ballAvelocity;
+  // }
+
   resolveCollision(ballA, ballB) {
-    ballA.velocity = this.calculateVelocity(ballA, ballB);
-    ballB.velocity = this.calculateVelocity(ballB, ballA);
+    var relVel = [
+      ballB.velocity.x - ballA.velocity.x,
+      ballB.velocity.y - ballA.velocity.y,
+    ];
+    var norm = [
+      ballB.position.x - ballA.position.x,
+      ballB.position.y - ballA.position.y,
+    ];
+    var mag = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1]);
+    norm = [norm[0] / mag, norm[1] / mag];
+
+    var velAlongNorm = relVel[0] * norm[0] + relVel[1] * norm[1];
+    if (velAlongNorm > 0) return;
+
+    var bounce = this.bounceCoefficient;
+    var j = -(1 + bounce) * velAlongNorm;
+    j /= 1 / ballA.radius + 1 / ballB.radius;
+
+    var impulse = [j * norm[0], j * norm[1]];
+
+    ballA.velocity.x -= (1 / ballA.radius) * impulse[0];
+    ballA.velocity.y -= (1 / ballA.radius) * impulse[1];
+    ballB.velocity.x += (1 / ballB.radius) * impulse[0];
+    ballB.velocity.y += (1 / ballB.radius) * impulse[1];
+
+    // if (
+    //   ballA.position.x + ballA.velocity.x - (1 / ballA.radius) * impulse[0] <
+    //     0 ||
+    //   ballA.position.x + ballA.velocity.x - (1 / ballA.radius) * impulse[0] >
+    //     this.width
+    // )
+    //   ballA.velocity.x = 0;
+    // if (
+    //   ballA.position.y + ballA.velocity.y - (1 / ballA.radius) * impulse[1] <
+    //     0 ||
+    //   ballA.position.y + ballA.velocity.y - (1 / ballA.radius) * impulse[1] >
+    //     this.height
+    // )
+    //   ballA.velocity.y = 0;
+    // if (
+    //   ballB.position.x + ballB.velocity.x + (1 / ballB.radius) * impulse[0] >
+    //     this.width ||
+    //   ballB.position.x + ballB.velocity.x + (1 / ballB.radius) * impulse[0] < 0
+    // )
+    //   ballB.velocity.x = 0;
+    // if (
+    //   ballB.position.y + ballB.velocity.y + (1 / ballB.radius) * impulse[1] >
+    //     this.height ||
+    //   ballB.position.y + ballB.velocity.y + (1 / ballB.radius) * impulse[1] < 0
+    // )
+    //   ballB.velocity.y = 0;
   }
 
   //https://codepen.io/gbnikolov/pen/mdLOayQ
   adjustPositions(ballA, ballB, depth) {
-    const percent = 0.2;
+    var percent = 0.1;
+    // percent = 1 / Vector.distance(ballA.position, ballB.position);
     const slop = 0.01;
 
     var corr =
       (Math.max(depth - slop, 0) / (1 / ballA.radius + 1 / ballB.radius)) *
       percent;
 
-    var norm = [
-      ballB.position.x - ballA.position.x,
-      ballB.position.y - ballA.position.y,
-    ];
-    var mag = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1]) * 2;
-    norm = [norm[0] / mag, norm[1] / mag];
-    let correction = [corr * norm[0], corr * norm[1]];
+    var norm = Vector.subtract(ballB.position, ballA.position);
+    norm.normalize();
 
-    if (ballA.position.x - ((1 / ballA.radius) * correction[0]) / 2 > 0)
-      ballA.position.x -= ((1 / ballA.radius) * correction[0]) / 2;
-    if (ballA.position.y - ((1 / ballA.radius) * correction[1]) / 2 > 0)
-      ballA.position.y -= ((1 / ballA.radius) * correction[1]) / 2;
-    if (
-      ballB.position.x + ((1 / ballB.radius) * correction[0]) / 2 <
-      this.width
-    )
-      ballB.position.x += ((1 / ballB.radius) * correction[0]) / 2;
-    if (
-      ballB.position.y + ((1 / ballB.radius) * correction[1]) / 2 <
-      this.height
-    )
-      ballB.position.y += ((1 / ballB.radius) * correction[1]) / 2;
+    // if (norm.x === 0 && norm.y === 0) {
+    //   norm = new Vector2(0, -100);
+    // }
+
+    // [
+    //   ballB.position.x - ballA.position.x,
+    //   ballB.position.y - ballA.position.y,
+    // ];
+    // var mag = Math.sqrt(norm.x * norm.x + norm.y * norm.y) * 2;
+    // norm = [norm.x / mag, norm.y / mag];
+    let correction = new Vector(corr * norm.x, corr * norm.y);
+
+    // if (ballA.position.x - ((1 / ballA.radius) * correction[0]) / 2 > 0)
+    //   ballA.position.x -= ((1 / ballA.radius) * correction[0]) / 2;
+    // if (ballA.position.y - ((1 / ballA.radius) * correction[1]) / 2 > 0)
+    //   ballA.position.y -= ((1 / ballA.radius) * correction[1]) / 2;
+    // if (
+    //   ballB.position.x + ((1 / ballB.radius) * correction[0]) / 2 <
+    //   this.width
+    // )
+    //   ballB.position.x += ((1 / ballB.radius) * correction[0]) / 2;
+    // if (
+    //   ballB.position.y + ((1 / ballB.radius) * correction[1]) / 2 <
+    //   this.height
+    // )
+    //   ballB.position.y += ((1 / ballB.radius) * correction[1]) / 2;
+    ballA.position.x -= (1 / ballA.radius) * correction.x;
+    ballA.position.y -= (1 / ballA.radius) * correction.y;
+    ballB.position.x += (1 / ballB.radius) * correction.x;
+    ballB.position.y += (1 / ballB.radius) * correction.y;
   }
 
   handleCollision(ball, candidates) {
