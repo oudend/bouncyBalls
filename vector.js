@@ -27,6 +27,11 @@ class Vector {
     this.y *= scalar.y ?? scalar;
     return this;
   }
+  divide(scalar) {
+    this.x /= scalar.x ?? scalar;
+    this.y /= scalar.y ?? scalar;
+    return this;
+  }
   add(scalar) {
     this.x += scalar.x ?? scalar;
     this.y += scalar.y ?? scalar;
@@ -37,7 +42,23 @@ class Vector {
     return Math.sqrt((v2.x - v1.x) ** 2 + (v2.y - v1.y) ** 2);
   }
 
+  static add(v1, v2) {
+    return new Vector(v1.x + v2.x, v1.y + v2.y);
+  }
+
+  static scale(v1, scalar) {
+    return new Vector(v1.x * scalar, v1.y * scalar);
+  }
+
+  static multiply(v1, v2) {
+    return new Vector(v1.x * v2.x, v1.y * v2.y);
+  }
+
   static subtract(v1, v2) {
     return new Vector(v1.x - v2.x, v1.y - v2.y);
+  }
+
+  static distance(v1, v2) {
+    return Math.sqrt((v1.x - v2.x) ** 2 + (v1.y - v2.y) ** 2);
   }
 }

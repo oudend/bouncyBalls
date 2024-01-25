@@ -10,6 +10,7 @@ html,
 body {
   overflow-y: hidden;
   overflow-x: hidden;
+  overflow: hidden;
 }
 
 .canvas {
@@ -19,10 +20,114 @@ body {
 }
 
 #sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  /* gap: 10px; */
   border-right: 1px solid black;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Hide scrollbar for IE, Edge add Firefox */
+.scrollbar-hidden {
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none; /* Firefox */
 }
 
 main {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: 150px 1fr;
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  left: 0px;
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.5);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-family: monospace, monospace;
+  font-size: 1.3vw;
+}
+
+.disabled {
+  cursor: default;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.input > h3 {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.input > input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 15px;
+  height: 15px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #c6c6c6;
+  cursor: pointer;
+}
+
+.input > input[type="range"]::-moz-range-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 15px;
+  height: 15px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #c6c6c6;
+  cursor: pointer;
+}
+
+.input > input[type="range"]::-webkit-slider-thumb:active {
+  box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe;
+  -webkit-box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe;
+}
+
+.input > input[type="range"]::-webkit-slider-thumb:hover {
+  background: #f7f7f7;
+}
+
+.input > input[type="range"] {
+  width: 100%;
+  background-color: #c6c6c6;
+  pointer-events: none;
+}
+
+.input > input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-bottom: 10px;
+  height: 2px;
+  background-color: #c6c6c6;
+  pointer-events: none;
+}
+
+.input > input[type="number"] {
+  color: #8a8383;
+  width: 50px;
+  height: 20px;
+  font-size: 15px;
+  border: none;
+}
+
+.input > input[type="number"]::-webkit-inner-spin-button,
+.input > input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
 }

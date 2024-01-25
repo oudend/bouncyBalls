@@ -1,3 +1,12 @@
+function uuidv4() {
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+    (
+      c ^
+      (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+    ).toString(16)
+  );
+}
+
 class Ball {
   constructor(x, y, velocity, radius, color, mass = radius) {
     this.position = new Vector(x, y);
@@ -10,7 +19,12 @@ class Ball {
 
     this.velocity = velocity;
 
+    this.newVelocity = velocity;
+    this.newPosition = new Vector(x, y);
+
     this.uuid = uuidv4();
+
+    this.index = -1;
   }
 
   intersects(x, y, r) {
@@ -34,7 +48,14 @@ class Ball {
 }
 
 class bouncyBallHandler {
-  constructor(width, height, ctx, bounceCoefficient = 0.5, frameRetrieve = 0) {
+  constructor(
+    width,
+    height,
+    ctx,
+    bounceCoefficient = 0.5,
+    frameRetrieve = 0,
+    onCollision
+  ) {
     this.width = width;
     this.height = height;
 
@@ -49,7 +70,7 @@ class bouncyBallHandler {
         width: this.width,
         height: this.height,
       },
-      undefined
+      5
     );
 
     this.frame = 0;
@@ -61,12 +82,21 @@ class bouncyBallHandler {
 
     this.newBall = false;
 
+    this.onCollision = onCollision;
+
     this.bounceCoefficient = bounceCoefficient;
+  }
+
+  removeBall(ball) {
+    this.balls.splice(this.balls.indexOf(ball), 1);
+    // this.balls[ball.index] = undefined;
   }
 
   addBall(ball) {
     this.newBall = true;
     this.balls.push(ball);
+
+    this.balls.index = this.balls.length - 1;
 
     return ball;
   }
@@ -91,8 +121,13 @@ class bouncyBallHandler {
     this.quadtree.insert(this.getQuadtreeObject(index));
   }
 
-  getQuadtreeCandidates(index) {
-    return this.quadtree.retrieve(this.getQuadtreeObject(index));
+  getQuadtreeCandidates(position, width, height) {
+    return this.quadtree.retrieve({
+      x: position.x,
+      y: position.y,
+      width: width,
+      height: height,
+    });
   }
 
   calculateVelocity(ball, ball2) {
@@ -102,80 +137,43 @@ class bouncyBallHandler {
       (((this.bounceCoefficient * ball2.mass + ball2.mass) /
         (ball.mass + ball2.mass)) *
         Vector.dotProduct(
-          Vector.subtract(ball.velocity, ball2.velocity),
+          Vector.subtract(ball.newVelocity, ball2.newVelocity),
           positionDiff
         )) /
       positionDiff.magnitude ** 2;
 
     positionDiff.multiply(formula);
 
-    return Vector.subtract(ball.velocity, positionDiff);
+    return Vector.subtract(ball.newVelocity, positionDiff);
   }
 
-  // resolveCollision(ballA, ballB) {
-  //   let ballAvelocity = this.calculateVelocity(ballA, ballB);
-  //   ballB.velocity = this.calculateVelocity(ballB, ballA);
-
-  //   ballA.velocity = ballAvelocity;
-  // }
-
   resolveCollision(ballA, ballB) {
-    var relVel = [
-      ballB.velocity.x - ballA.velocity.x,
-      ballB.velocity.y - ballA.velocity.y,
-    ];
-    var norm = [
-      ballB.position.x - ballA.position.x,
-      ballB.position.y - ballA.position.y,
-    ];
-    var mag = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1]);
-    norm = [norm[0] / mag, norm[1] / mag];
+    let ballAvelocity = this.calculateVelocity(ballA, ballB);
+    ballB.newVelocity = this.calculateVelocity(ballB, ballA);
 
-    var velAlongNorm = relVel[0] * norm[0] + relVel[1] * norm[1];
-    if (velAlongNorm > 0) return;
-
-    var bounce = this.bounceCoefficient;
-    var j = -(1 + bounce) * velAlongNorm;
-    j /= 1 / ballA.radius + 1 / ballB.radius;
-
-    var impulse = [j * norm[0], j * norm[1]];
-
-    ballA.velocity.x -= (1 / ballA.radius) * impulse[0];
-    ballA.velocity.y -= (1 / ballA.radius) * impulse[1];
-    ballB.velocity.x += (1 / ballB.radius) * impulse[0];
-    ballB.velocity.y += (1 / ballB.radius) * impulse[1];
-
-    // if (
-    //   ballA.position.x + ballA.velocity.x - (1 / ballA.radius) * impulse[0] <
-    //     0 ||
-    //   ballA.position.x + ballA.velocity.x - (1 / ballA.radius) * impulse[0] >
-    //     this.width
-    // )
-    //   ballA.velocity.x = 0;
-    // if (
-    //   ballA.position.y + ballA.velocity.y - (1 / ballA.radius) * impulse[1] <
-    //     0 ||
-    //   ballA.position.y + ballA.velocity.y - (1 / ballA.radius) * impulse[1] >
-    //     this.height
-    // )
-    //   ballA.velocity.y = 0;
-    // if (
-    //   ballB.position.x + ballB.velocity.x + (1 / ballB.radius) * impulse[0] >
-    //     this.width ||
-    //   ballB.position.x + ballB.velocity.x + (1 / ballB.radius) * impulse[0] < 0
-    // )
-    //   ballB.velocity.x = 0;
-    // if (
-    //   ballB.position.y + ballB.velocity.y + (1 / ballB.radius) * impulse[1] >
-    //     this.height ||
-    //   ballB.position.y + ballB.velocity.y + (1 / ballB.radius) * impulse[1] < 0
-    // )
-    //   ballB.velocity.y = 0;
+    ballA.newVelocity = ballAvelocity;
   }
 
   //https://codepen.io/gbnikolov/pen/mdLOayQ
   adjustPositions(ballA, ballB, depth) {
-    var percent = 0.1;
+    // var norm = Vector.subtract(ballB.position, ballA.position);
+    // // norm = Vector.scale(
+    // //   norm.normalize(),
+    // //   Vector.distance(ballA.position, ballB.position)
+    // // );
+    // norm.normalize();
+    // var distBetweenRadii =
+    //   Vector.distance(ballA.position, ballB.position) -
+    //   ballA.radius / 2 -
+    //   ballB.radius / 2;
+    // norm.multiply(distBetweenRadii / (ballA.mass + ballB.mass));
+
+    // ballA.newPosition.add(Vector.scale(norm, ballB.mass));
+    // ballB.newPosition.add(Vector.scale(norm, -1 * ballA.mass));
+
+    // return;
+
+    var percent = 0.2;
     // percent = 1 / Vector.distance(ballA.position, ballB.position);
     const slop = 0.01;
 
@@ -198,29 +196,53 @@ class bouncyBallHandler {
     // norm = [norm.x / mag, norm.y / mag];
     let correction = new Vector(corr * norm.x, corr * norm.y);
 
-    // if (ballA.position.x - ((1 / ballA.radius) * correction[0]) / 2 > 0)
-    //   ballA.position.x -= ((1 / ballA.radius) * correction[0]) / 2;
-    // if (ballA.position.y - ((1 / ballA.radius) * correction[1]) / 2 > 0)
-    //   ballA.position.y -= ((1 / ballA.radius) * correction[1]) / 2;
-    // if (
-    //   ballB.position.x + ((1 / ballB.radius) * correction[0]) / 2 <
-    //   this.width
-    // )
-    //   ballB.position.x += ((1 / ballB.radius) * correction[0]) / 2;
-    // if (
-    //   ballB.position.y + ((1 / ballB.radius) * correction[1]) / 2 <
-    //   this.height
-    // )
-    //   ballB.position.y += ((1 / ballB.radius) * correction[1]) / 2;
-    ballA.position.x -= (1 / ballA.radius) * correction.x;
-    ballA.position.y -= (1 / ballA.radius) * correction.y;
-    ballB.position.x += (1 / ballB.radius) * correction.x;
-    ballB.position.y += (1 / ballB.radius) * correction.y;
+    // const ballAMass = ballA.mass;
+    // const ballBMass = ballB.mass;
+
+    // if (ballA.position.x < 0 || ballA.position.x > this.width) {
+    //   ballA.mass = 99999;
+    //   if (ballA.position.x < 0) ballA.position.x = 0;
+    //   else ballA.newPosition.x = this.width;
+    // }
+    // if (ballA.position.y < 0 || ballA.position.y > this.height) {
+    //   ballA.mass = 99999;
+    //   if (ballA.position.y < 0) ballA.position.y = 0;
+    //   else ballA.newPosition.y = this.height;
+    // }
+    // if (ballB.position.x < 0 || ballB.position.x > this.width) {
+    //   ballB.mass = 99999;
+    //   if (ballB.position.x < 0) ballB.position.x = 0;
+    //   else ballB.newPosition.x = this.width;
+    // }
+    // if (ballB.position.y < 0 || ballB.position.y > this.height) {
+    //   ballB.mass = 99999;
+    //   if (ballB.position.y < 0) ballB.position.y = 0;
+    //   else ballB.newPosition.y = this.height;
+    // }
+
+    ballA.newPosition.x -=
+      (1 / ballA.radius) *
+      correction.x *
+      (ballB.mass / (ballA.mass + ballB.mass));
+    ballA.newPosition.y -=
+      (1 / ballA.radius) *
+      correction.y *
+      (ballB.mass / (ballA.mass + ballB.mass));
+    ballB.newPosition.x +=
+      (1 / ballB.radius) *
+      correction.x *
+      (ballA.mass / (ballA.mass + ballB.mass));
+    ballB.newPosition.y +=
+      (1 / ballB.radius) *
+      correction.y *
+      (ballA.mass / (ballA.mass + ballB.mass));
+
+    // ballA.mass = ballAMass;
+    // ballB.mass = ballBMass;
+    //*/
   }
 
   handleCollision(ball, candidates) {
-    //if(candidates.length<=1) console.log(candidates)
-
     for (
       let candidateIndex = 0;
       candidateIndex < candidates.length;
@@ -236,29 +258,36 @@ class bouncyBallHandler {
         candidate.radius / 2
       );
 
-      //console.log(ball, candidate)
-
       if (intersect) {
         let dx = candidate.x - ball.position.x;
         let dy = candidate.y - ball.position.y;
 
-        this.adjustPositions(
-          ball,
-          this.balls[candidate.index],
-          Math.sqrt(dx * dx + dy * dy)
-        );
-        this.resolveCollision(ball, this.balls[candidate.index]);
+        var ball2 = this.balls[candidate.index];
+
+        if (dx < 0) {
+          if (this.onCollision) this.onCollision(ball);
+
+          this.adjustPositions(
+            ball,
+            this.balls[candidate.index],
+            Math.sqrt(dx * dx + dy * dy)
+          );
+          this.resolveCollision(ball, this.balls[candidate.index]);
+        }
       }
     }
   }
 
-  update(delta, lazy = true, ballUpdate = (ball) => {}) {
+  update(delta, ballUpdate = (ball) => {}) {
     this.frameRetrieve = delta * 100;
 
     this.quadtree.clear();
 
     for (let ballIndex = 0; ballIndex < this.balls.length; ballIndex++) {
       let ball = this.balls[ballIndex];
+
+      ball.position = ball.newPosition;
+      ball.velocity = ball.newVelocity;
 
       ballUpdate(ball);
 
@@ -274,57 +303,53 @@ class bouncyBallHandler {
     for (let ballIndex = 0; ballIndex < this.balls.length; ballIndex++) {
       let ball = this.balls[ballIndex];
 
-      if (
-        (this.frame >= this.frameRetrieve ||
-          this.firstFrame === true ||
-          this.newBall === true) &&
-        delta > 0.08 &&
-        lazy
-      ) {
-        //
-        this.candidates[ballIndex] = this.getQuadtreeCandidates(ballIndex);
+      this.candidates[ballIndex] = this.getQuadtreeCandidates(
+        ball.position,
+        ball.radius,
+        ball.radius
+      );
 
-        this.frame = 0;
-      } else {
-        this.candidates[ballIndex] = this.getQuadtreeCandidates(ballIndex);
-      }
-
-      //console.log(typeof this.candidates[ballIndex], this.newBall);
-      //f
       this.handleCollision(ball, this.candidates[ballIndex]);
 
       if (
         ball.radius / 2 + ball.position.x + ball.velocity.x * delta >
         this.width
-      )
-        ball.velocity.x = -ball.velocity.x * this.bounceCoefficient;
+      ) {
+        ball.newVelocity.x = -ball.velocity.x * this.bounceCoefficient;
+        this.onCollision(ball);
+      }
 
-      if (ball.position.x - ball.radius / 2 + ball.velocity.x * delta < 0)
-        ball.velocity.x = -ball.velocity.x * this.bounceCoefficient;
+      if (ball.position.x - ball.radius / 2 + ball.velocity.x * delta < 0) {
+        ball.newVelocity.x = -ball.velocity.x * this.bounceCoefficient;
+        this.onCollision(ball);
+      }
 
       if (
         ball.position.y + ball.radius / 2 + ball.velocity.y * delta >
         this.height
-      )
-        ball.velocity.y = -ball.velocity.y * this.bounceCoefficient;
+      ) {
+        ball.newVelocity.y = -ball.velocity.y * this.bounceCoefficient;
+        this.onCollision(ball);
+      }
 
-      if (ball.position.y - ball.radius / 2 + ball.velocity.y * delta < 0)
-        ball.velocity.y = -ball.velocity.y * this.bounceCoefficient;
+      if (ball.position.y - ball.radius / 2 + ball.velocity.y * delta < 0) {
+        ball.newVelocity.y = -ball.velocity.y * this.bounceCoefficient;
+        this.onCollision(ball);
+      }
 
       if (ball.position.y - ball.radius / 2 < 0) {
-        ball.position.y = ball.radius / 2;
+        ball.newPosition.y = ball.radius / 2;
       }
       if (ball.position.y + ball.radius / 2 > this.height) {
-        ball.position.y = this.height - ball.radius / 2;
+        ball.newPosition.y = this.height - ball.radius / 2;
       }
       if (ball.position.x - ball.radius / 2 < 0) {
-        ball.position.x = ball.radius / 2;
+        ball.newPosition.x = ball.radius / 2;
       }
       if (ball.position.x + ball.radius / 2 > this.width) {
-        ball.position.x = this.width - ball.radius / 2;
+        ball.newPosition.x = this.width - ball.radius / 2;
       }
     }
-
     // if (this.firstFrame || this.newBall) console.log("?", this.frameRetrieve);
 
     this.frame++;
