@@ -13,10 +13,11 @@ body {
   overflow: hidden;
 }
 
-.canvas {
+#canvas-container {
+  position: relative;
+}
+#canvas-container > * {
   position: absolute;
-  left: 100%;
-  top: 100%;
 }
 
 #sidebar {

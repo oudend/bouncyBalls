@@ -154,7 +154,14 @@ var fps = 0;
 
 ballHandler.addBall(new Ball(100, 100, new Vector(4, 4), 100, [255, 255, 255]));
 
+var stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.getElementById("canvas-container").appendChild(stats.dom);
+stats.dom.style.position = "absolute";
+
 function draw() {
+  stats.begin();
+
   inputHandler.updateInputs();
   ballHandler.bounceCoefficient = inputHandler.getValue(
     "coefficientOfRestitution"
@@ -224,6 +231,8 @@ function draw() {
 
   if (inputHandler.getValue("visualizeQuadtree"))
     drawQuadtree(ballHandler.quadtree, ctx);
+
+  stats.end();
 
   requestAnimationFrame(draw);
 }
