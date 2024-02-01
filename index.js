@@ -46,7 +46,7 @@ function spawnBallAtCursor(position, radius = 0, velocity = randomDirection()) {
     position.y,
     velocity,
     radius,
-    hsl2rgb((mouseX + mouseY) / 2, 1, 0.5)
+    hsl2rgb((mouseVector.x + mouseVector.y) / 2, 1, 0.5)
   );
 
   ballHandler.addBall(ball);
@@ -62,41 +62,44 @@ var mouseDown = false;
 
 var heldBallIndex = undefined;
 
+const mouseVector = new Vector(0, 0);
+
 canvas.onmousedown = () => {
   mouseDown = true;
+  const ballCandidates = ballHandler.getQuadtreeCandidates(mouseVector, 10, 10);
 
-  const mouseVector = new Vector(mouseX, mouseY);
+  var closestBall = undefined;
+  var minDistance = Infinity;
 
-  const ballCandidates = ballHandler.getQuadtreeCandidates(mouseVector, 30, 30);
+  for (var i = 0; i < ballCandidates.length; i++) {
+    const ball = ballCandidates[i];
+    const distance = Vector.distance(mouseVector, new Vector(ball.x, ball.y));
 
-  const min = ballCandidates.sort((a, b) =>
-    Math.min(
-      Vector.distance(mouseVector, new Vector(a.x, a.y)),
-      Vector.distance(mouseVector, new Vector(b.x, b.y))
-    )
-  )[0];
-
-  heldBallIndex = min.index;
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestBall = ball;
+    }
+  }
+  if (closestBall !== undefined) heldBallIndex = closestBall.index;
 };
 
-canvas.onmouseup = () => {
+window.onmouseup = () => {
   mouseDown = false;
 };
 
-previousMouseX = 0;
-previousMouseY = 0;
+previousMouseVector = new Vector(0, 0);
 
 mouseVelocity = new Vector(0, 0);
 
 canvas.onmousemove = (e) => {
-  mouseX = e.x - 150;
-  mouseY = e.y;
+  mouseVector.x = e.x - 150;
+  mouseVector.y = e.y;
 
-  mouseVelocity.x = mouseX - previousMouseX;
-  mouseVelocity.y = mouseY - previousMouseY;
+  mouseVelocity.x = mouseVector.x - previousMouseVector.x;
+  mouseVelocity.y = mouseVector.y - previousMouseVector.y;
 
-  previousMouseX = e.x;
-  previousMouseY = e.y;
+  previousMouseVector.x = mouseVector.x;
+  previousMouseVector.y = mouseVector.y;
 
   mouseVelocity = new Vector(e.movementX, e.movementY);
 };
@@ -110,7 +113,7 @@ var sound = new Howl({
 // Howler.volume(0.5);
 
 function handleCollision(ball) {
-  if (!playSound) return;
+  // if (!playSound) return;
   var id = sound.play();
   // console.log(ball);
   sound.volume((ball.velocity.magnitude / 80) * ball.mass, id);
@@ -119,77 +122,12 @@ function handleCollision(ball) {
 
 const inputHandler = new InputHandler();
 
-function floatInput(element) {
-  return parseFloat(element.value, 3);
-}
+inputHandler.addContainer(document.getElementById("sidebar"));
 
-function checkboxInput(element) {
-  return element.checked;
-}
-
-inputHandler.addInput(
-  "coefficientOfRestitution",
-  document.getElementById("coefficientOfRestitution"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "visualizeQuadtreeCheckbox",
-  document.getElementById("visualizeQuadtree"),
-  checkboxInput,
-  undefined
-);
-inputHandler.addInput(
-  "gravityEnabledCheckbox",
-  document.getElementById("gravityEnabledCheckbox"),
-  checkboxInput,
-  undefined,
-  undefined,
-  (e, value) => {
-    if (value) accelerationInput.classList.add("disabled");
-    else accelerationInput.classList.remove("disabled");
-  }
-);
-
-inputHandler.addInput(
-  "spawnSizeMin",
-  document.getElementById("spawnSizeMinInput"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "spawnSizeMax",
-  document.getElementById("spawnSizeMaxInput"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "spawnRadius",
-  document.getElementById("spawnRadius"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "accelerationX",
-  document.getElementById("accelerationInputX"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "accelerationY",
-  document.getElementById("accelerationInputY"),
-  floatInput,
-  undefined
-);
-inputHandler.addInput(
-  "spawnAmount",
-  document.getElementById("spawnAmountInput"),
-  floatInput,
-  undefined
-);
-
-var mouseX = 0;
-var mouseY = 0;
+inputHandler.setCallback("gravityEnabledCheckbox", (e, value) => {
+  if (value) accelerationInput.classList.add("disabled");
+  else accelerationInput.classList.remove("disabled");
+});
 
 const accelerationInput = document.getElementById("accelerationInput");
 
@@ -221,6 +159,7 @@ function draw() {
   ballHandler.bounceCoefficient = inputHandler.getValue(
     "coefficientOfRestitution"
   );
+  ballHandler.wrapAround = inputHandler.getValue("wrapAroundCheckbox");
   if (isNaN(ballHandler.bounceCoefficient)) ballHandler.bounceCoefficient = 0.5;
 
   selectedInteraction =
@@ -245,6 +184,9 @@ function draw() {
   lastCalledTime = Date.now();
   fps = 1 / delta;
 
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ballHandler.update(Math.min(2, delta), applyAcceleration);
+
   if (mouseDown) {
     switch (selectedInteraction) {
       case "spawn":
@@ -257,7 +199,10 @@ function draw() {
             .multiply(inputHandler.getValue("spawnRadius"))
             .multiply(Math.random());
           spawnBallAtCursor(
-            new Vector(mouseX + randomOffset.x, mouseY + randomOffset.y),
+            new Vector(
+              mouseVector.x + randomOffset.x,
+              mouseVector.y + randomOffset.y
+            ),
             getRandomArbitrary(
               inputHandler.getValue("spawnSizeMin"),
               inputHandler.getValue("spawnSizeMax")
@@ -268,24 +213,16 @@ function draw() {
         break;
       case "grab":
         const ball = ballHandler.balls[heldBallIndex];
-        ball.newVelocity = Vector.subtract(
-          new Vector(mouseX, mouseY),
-          ball.position
-        )
+        if (!ball) break;
+        ball.newVelocity = Vector.subtract(mouseVector, ball.position)
           .normalize()
-          .multiply(
-            Vector.distance(new Vector(mouseX, mouseY), ball.position) ** 1.3
-          );
-        // ball.newVelocity = ball.velocity;
-        console.log(ball);
+          .multiply(Vector.distance(mouseVector, ball.position) ** 1.4)
+          .add(Vector.scale(ball.newVelocity, 0.1));
         break;
     }
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ballHandler.update(Math.min(2, delta), applyAcceleration);
-  if (inputHandler.getValue("visualizeQuadtreeCheckbox"))
+  if (inputHandler.getValue("visualizeQuadtree"))
     drawQuadtree(ballHandler.quadtree, ctx);
 
   requestAnimationFrame(draw);

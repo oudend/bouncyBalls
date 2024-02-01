@@ -54,7 +54,8 @@ class bouncyBallHandler {
     ctx,
     bounceCoefficient = 0.5,
     frameRetrieve = 0,
-    onCollision
+    onCollision,
+    wrapAround = true
   ) {
     this.width = width;
     this.height = height;
@@ -62,6 +63,8 @@ class bouncyBallHandler {
     this.ctx = ctx;
 
     this.balls = [];
+
+    this.wrapAround = wrapAround;
 
     this.quadtree = new Quadtree(
       {
@@ -184,41 +187,7 @@ class bouncyBallHandler {
     var norm = Vector.subtract(ballB.position, ballA.position);
     norm.normalize();
 
-    // if (norm.x === 0 && norm.y === 0) {
-    //   norm = new Vector2(0, -100);
-    // }
-
-    // [
-    //   ballB.position.x - ballA.position.x,
-    //   ballB.position.y - ballA.position.y,
-    // ];
-    // var mag = Math.sqrt(norm.x * norm.x + norm.y * norm.y) * 2;
-    // norm = [norm.x / mag, norm.y / mag];
     let correction = new Vector(corr * norm.x, corr * norm.y);
-
-    // const ballAMass = ballA.mass;
-    // const ballBMass = ballB.mass;
-
-    // if (ballA.position.x < 0 || ballA.position.x > this.width) {
-    //   ballA.mass = 99999;
-    //   if (ballA.position.x < 0) ballA.position.x = 0;
-    //   else ballA.newPosition.x = this.width;
-    // }
-    // if (ballA.position.y < 0 || ballA.position.y > this.height) {
-    //   ballA.mass = 99999;
-    //   if (ballA.position.y < 0) ballA.position.y = 0;
-    //   else ballA.newPosition.y = this.height;
-    // }
-    // if (ballB.position.x < 0 || ballB.position.x > this.width) {
-    //   ballB.mass = 99999;
-    //   if (ballB.position.x < 0) ballB.position.x = 0;
-    //   else ballB.newPosition.x = this.width;
-    // }
-    // if (ballB.position.y < 0 || ballB.position.y > this.height) {
-    //   ballB.mass = 99999;
-    //   if (ballB.position.y < 0) ballB.position.y = 0;
-    //   else ballB.newPosition.y = this.height;
-    // }
 
     ballA.newPosition.x -=
       (1 / ballA.radius) *
@@ -236,10 +205,6 @@ class bouncyBallHandler {
       (1 / ballB.radius) *
       correction.y *
       (ballA.mass / (ballA.mass + ballB.mass));
-
-    // ballA.mass = ballAMass;
-    // ballB.mass = ballBMass;
-    //*/
   }
 
   handleCollision(ball, candidates) {
@@ -310,6 +275,18 @@ class bouncyBallHandler {
       );
 
       this.handleCollision(ball, this.candidates[ballIndex]);
+
+      if (this.wrapAround) {
+        ball.position.x = ball.position.x % this.width;
+        ball.position.y = ball.position.y % this.height;
+        if (ball.position.x < 0) {
+          ball.position.x = this.width - ball.position.x;
+        }
+        if (ball.position.y < 0) {
+          ball.position.y = this.height - ball.position.y;
+        }
+        continue;
+      }
 
       if (
         ball.radius / 2 + ball.position.x + ball.velocity.x * delta >

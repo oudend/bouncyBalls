@@ -17,8 +17,10 @@ class Vector {
   }
 
   normalize() {
-    this.x /= this.magnitude;
-    this.y /= this.magnitude;
+    const magnitude = this.magnitude;
+    if (magnitude === 0) return this;
+    this.x /= magnitude;
+    this.y /= magnitude;
     return this;
   }
 
