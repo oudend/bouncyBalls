@@ -1,4 +1,6 @@
 var canvas = document.getElementById("canvas");
+var outerCursorCircle = document.getElementById("outerCursorCircle");
+var cursorCircle = document.getElementById("cursorCircle");
 
 canvas.height = window.innerHeight;
 canvas.width = window.innerWidth - 150;
@@ -64,7 +66,14 @@ var heldBallIndex = undefined;
 
 const mouseVector = new Vector(0, 0);
 
-canvas.onmousedown = () => {
+canvas.addEventListener("touchstart", down);
+canvas.addEventListener("mousedown", down);
+canvas.addEventListener("touchend", up);
+canvas.addEventListener("mouseup", up);
+canvas.addEventListener("touchmove", move);
+canvas.addEventListener("mousemove", move);
+
+function down() {
   mouseDown = true;
   const ballCandidates = ballHandler.getQuadtreeCandidates(mouseVector, 10, 10);
 
@@ -81,19 +90,21 @@ canvas.onmousedown = () => {
     }
   }
   if (closestBall !== undefined) heldBallIndex = closestBall.index;
-};
+}
 
-window.onmouseup = () => {
+function up() {
   mouseDown = false;
-};
+}
 
 previousMouseVector = new Vector(0, 0);
 
 mouseVelocity = new Vector(0, 0);
+function move(e) {
+  mouseVector.x = e.clientX - 150;
+  mouseVector.y = e.clientY;
 
-canvas.onmousemove = (e) => {
-  mouseVector.x = e.x - 150;
-  mouseVector.y = e.y;
+  outerCursorCircle.style.left = e.clientX - 150 - 150;
+  outerCursorCircle.style.top = e.clientY - 150;
 
   mouseVelocity.x = mouseVector.x - previousMouseVector.x;
   mouseVelocity.y = mouseVector.y - previousMouseVector.y;
@@ -102,7 +113,7 @@ canvas.onmousemove = (e) => {
   previousMouseVector.y = mouseVector.y;
 
   mouseVelocity = new Vector(e.movementX, e.movementY);
-};
+}
 
 const playSound = false;
 
@@ -113,11 +124,15 @@ var sound = new Howl({
 // Howler.volume(0.5);
 
 function handleCollision(ball) {
-  // if (!playSound) return;
+  if (!inputHandler.getValue("playSound")) return;
   var id = sound.play();
-  // console.log(ball);
-  sound.volume((ball.velocity.magnitude / 80) * ball.mass, id);
-  sound.fade(1, 0, 100, id);
+  sound.volume(
+    (ball.velocity.magnitude / 80) *
+      ball.mass *
+      inputHandler.getValue("soundVolume"),
+    id
+  );
+  // sound.fade(1, 0, 100, id);
 }
 
 const inputHandler = new InputHandler();
@@ -193,6 +208,8 @@ function draw() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ballHandler.update(Math.min(2, delta), applyAcceleration);
+
+  cursorCircle.setAttribute("r", inputHandler.getValue("spawnRadius"));
 
   if (mouseDown) {
     switch (selectedInteraction) {

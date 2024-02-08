@@ -15,7 +15,23 @@ body {
 
 #canvas-container {
   position: relative;
+  /* pointer-events: none; */
 }
+
+#outerCursorCircle,
+#innerCursorCircle {
+  width: 500px;
+  height: 500px;
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+}
+#cursorCircle > svg,
+#innerCursorCircle > svg {
+  position: absolute;
+  z-index: 1000;
+}
+
 #canvas-container > * {
   position: absolute;
 }

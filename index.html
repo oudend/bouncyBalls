@@ -108,6 +108,25 @@
         </div>
         <h2>Behavior</h2>
         <div class="checkboxInput input">
+          <h3>play sound</h3>
+          <div>
+            <input type="checkbox" id="playSound" name="playSound" checked />
+            <label for="playSound">Enabled</label>
+          </div>
+        </div>
+        <div class="floatInput input">
+          <h3>Sound volume</h3>
+          <input type="range" value="1" min="0" max="1" step="0.01" />
+          <input
+            type="number"
+            id="soundVolume"
+            value="1"
+            min="0"
+            max="1"
+            step="0.01"
+          />
+        </div>
+        <div class="checkboxInput input">
           <h3>Gravity</h3>
           <div>
             <input
@@ -175,6 +194,21 @@
       </div>
       <div id="canvas-container">
         <canvas id="canvas"></canvas>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          version="1.1"
+          id="outerCursorCircle"
+        >
+          <circle
+            cx="150"
+            cy="150"
+            r="40"
+            stroke="black"
+            stroke-width="2"
+            fill="none"
+            id="cursorCircle"
+          />
+        </svg>
       </div>
     </main>
   </body>
