@@ -55,6 +55,9 @@ class bouncyBallHandler {
     bounceCoefficient = 0.5,
     frameRetrieve = 0,
     onCollision,
+    onIntersect = () => {
+      return true;
+    },
     wrapAround = true
   ) {
     this.width = width;
@@ -86,6 +89,8 @@ class bouncyBallHandler {
     this.newBall = false;
 
     this.onCollision = onCollision;
+
+    this.onIntersect = onIntersect;
 
     this.bounceCoefficient = bounceCoefficient;
   }
@@ -192,19 +197,19 @@ class bouncyBallHandler {
     ballA.newPosition.x -=
       (1 / ballA.radius) *
       correction.x *
-      (ballB.mass / (ballA.mass + ballB.mass));
+      Math.max(ballB.mass / (ballA.mass + ballB.mass), 0);
     ballA.newPosition.y -=
       (1 / ballA.radius) *
       correction.y *
-      (ballB.mass / (ballA.mass + ballB.mass));
+      Math.max(ballB.mass / (ballA.mass + ballB.mass), 0);
     ballB.newPosition.x +=
       (1 / ballB.radius) *
       correction.x *
-      (ballA.mass / (ballA.mass + ballB.mass));
+      Math.max(ballA.mass / (ballA.mass + ballB.mass), 0);
     ballB.newPosition.y +=
       (1 / ballB.radius) *
       correction.y *
-      (ballA.mass / (ballA.mass + ballB.mass));
+      Math.max(ballA.mass / (ballA.mass + ballB.mass), 0);
   }
 
   handleCollision(ball, candidates) {
@@ -215,7 +220,7 @@ class bouncyBallHandler {
     ) {
       var candidate = candidates[candidateIndex];
 
-      if (ball.uuid == candidate.uuid) continue;
+      if (ball.uuid === candidate.uuid) continue;
 
       let intersect = ball.intersects(
         candidate.x,
@@ -229,15 +234,17 @@ class bouncyBallHandler {
 
         var ball2 = this.balls[candidate.index];
 
+        if (ball2 === undefined) return;
+
+        if (!this.onIntersect(ball, ball2)) {
+          return;
+        }
+
         if (dx < 0) {
           if (this.onCollision) this.onCollision(ball);
 
-          this.adjustPositions(
-            ball,
-            this.balls[candidate.index],
-            Math.sqrt(dx * dx + dy * dy)
-          );
-          this.resolveCollision(ball, this.balls[candidate.index]);
+          this.adjustPositions(ball, ball2, Math.sqrt(dx * dx + dy * dy));
+          this.resolveCollision(ball, ball2);
         }
       }
     }

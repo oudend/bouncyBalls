@@ -15,16 +15,12 @@ var ballHandler = new bouncyBallHandler(
   ctx,
   bounceCoefficient,
   undefined,
-  handleCollision.bind(this)
+  handleCollision.bind(this),
+  handleIntersect.bind(this)
 );
 
 //? TODO:
-// fix weird collisions
 // add different collision types(merge and such)
-// get better quadtree maybe?
-// quadtree visualization
-// make it impossible for balls to pass through boundary
-// wrap around
 
 function hsl2rgb(h, s, l) {
   let a = s * Math.min(l, 1 - l);
@@ -69,7 +65,7 @@ const mouseVector = new Vector(0, 0);
 canvas.addEventListener("touchstart", down);
 canvas.addEventListener("mousedown", down);
 canvas.addEventListener("touchend", up);
-canvas.addEventListener("mouseup", up);
+window.addEventListener("mouseup", up);
 canvas.addEventListener("touchmove", move);
 canvas.addEventListener("mousemove", move);
 
@@ -135,6 +131,21 @@ function handleCollision(ball) {
   // sound.fade(1, 0, 100, id);
 }
 
+function handleIntersect(ball, ball2) {
+  if (!inputHandler.getValue("merge")) return true;
+
+  if (
+    Vector.distance(ball.position, ball2.position) <=
+    Math.max(ball2.radius, ball.radius) / 2
+  ) {
+    if (ball.radius >= ball2.radius) {
+      ball.radius += Math.sqrt(ball2.radius);
+      ballHandler.removeBall(ball2);
+    }
+  }
+  return false;
+}
+
 const inputHandler = new InputHandler();
 
 inputHandler.addContainer(document.getElementById("sidebar"));
@@ -160,7 +171,8 @@ resetButton.addEventListener("click", () => {
     ctx,
     bounceCoefficient,
     undefined,
-    handleCollision.bind(this)
+    handleCollision.bind(this),
+    handleIntersect.bind(this)
   );
 });
 
