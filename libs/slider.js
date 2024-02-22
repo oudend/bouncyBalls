@@ -79,16 +79,9 @@ const inputs = document.querySelectorAll(`.form_control_container input`);
 const normalSliders = document.querySelectorAll(`.input > input[type="range"]`);
 const normalInputs = document.querySelectorAll(`.input > input[type="number"]`);
 
-// const fromSlider = document.querySelector("#fromSlider");
-// const toSlider = document.querySelector("#toSlider");
-// const fromInput = document.querySelector("#fromInput");
-// const toInput = document.querySelector("#toInput");
-
 for (let i = 0; i < normalSliders.length; i++) {
   const slider = normalSliders[i];
   const input = normalInputs[i];
-
-  console.log(input);
 
   input.value = parseFloat(slider.value, 10);
 
@@ -112,8 +105,6 @@ for (let i = 0; i < normalSliders.length; i++) {
     input.value = parseFloat(slider.value, 10);
   };
 
-  // slider.oninput = controlFromSlider.bind(this, { value: 0 }, slider, input);
-
   input.oninput = () => {
     slider.value = parseFloat(input.value, 10);
 
@@ -132,8 +123,6 @@ for (let i = 0; i < sliders.length; i += 2) {
   toSlider = sliders[i + 1];
   fromInput = inputs[i];
   toInput = inputs[i + 1];
-
-  console.log(fromSlider, toSlider);
 
   fillSlider(fromSlider, toSlider, "#C6C6C6", "#25daa5", toSlider);
   setToggleAccessible(toSlider, toSlider);
@@ -160,12 +149,3 @@ for (let i = 0; i < sliders.length; i += 2) {
     toSlider
   );
 }
-
-// fillSlider(fromSlider, toSlider, "#C6C6C6", "#25daa5", toSlider);
-// setToggleAccessible(toSlider);
-
-// fromSlider.oninput = () => controlFromSlider(fromSlider, toSlider, fromInput);
-// toSlider.oninput = () => controlToSlider(fromSlider, toSlider, toInput);
-// fromInput.oninput = () =>
-//   controlFromInput(fromSlider, fromInput, toInput, toSlider);
-// toInput.oninput = () => controlToInput(toSlider, fromInput, toInput, toSlider);

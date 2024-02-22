@@ -1,3 +1,8 @@
+//File: index.js
+//Author: Martin Terner
+//Date: 2024-02-22
+//Description: main file for running ball simulation
+
 var canvas = document.getElementById("canvas");
 var outerCursorCircle = document.getElementById("outerCursorCircle");
 var cursorCircle = document.getElementById("cursorCircle");
@@ -9,36 +14,24 @@ var ctx = canvas.getContext("2d");
 acceleration = new Vector(0, 0);
 bounceCoefficient = 0.3;
 
+//initializes the bouncyBallHandler
 var ballHandler = new bouncyBallHandler(
   canvas.width,
   canvas.height,
   ctx,
   bounceCoefficient,
-  undefined,
   handleCollision.bind(this),
   handleIntersect.bind(this)
 );
 
-//? TODO:
-// add different collision types(merge and such)
-
-function hsl2rgb(h, s, l) {
-  let a = s * Math.min(l, 1 - l);
-  let f = (n, k = (n + h / 30) % 12) =>
-    l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-  return [f(0) * 255, f(8) * 255, f(4) * 255];
-}
-
-function getRandomArbitrary(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function randomDirection() {
-  rangrad = 2 * Math.PI * Math.random();
-  return new Vector(Math.cos(rangrad), Math.sin(rangrad));
-}
-
-function spawnBallAtCursor(position, radius = 0, velocity = randomDirection()) {
+/**
+ * Spawns a ball at the cursor position with given velocity and radius.
+ *
+ * @param {Vector} position - position the ball will spawn
+ * @param {number} [radius=0] - radius of the ball
+ * @param {Vector} [velocity=randomDirection()] - velocity of the ball
+ */
+function spawnBallAtCursor(position, radius = 1, velocity = randomDirection()) {
   ball = new Ball(
     position.x,
     position.y,
@@ -52,6 +45,11 @@ function spawnBallAtCursor(position, radius = 0, velocity = randomDirection()) {
   ball.render(ctx);
 }
 
+/**
+ * function for applying acceleration(done using the html menu)
+ *
+ * @param {*} ball
+ */
 function applyAcceleration(ball) {
   ball.velocity.add(acceleration);
 }
@@ -60,16 +58,24 @@ var mouseDown = false;
 
 var heldBallIndex = undefined;
 
+//the position of the mouse
 const mouseVector = new Vector(0, 0);
+previousMouseVector = new Vector(0, 0);
+mouseVelocity = new Vector(0, 0);
 
-canvas.addEventListener("touchstart", down);
-canvas.addEventListener("mousedown", down);
-canvas.addEventListener("touchend", up);
-window.addEventListener("mouseup", up);
-canvas.addEventListener("touchmove", move);
-canvas.addEventListener("mousemove", move);
+canvas.addEventListener("touchstart", onMouseDown);
+canvas.addEventListener("mousedown", onMouseDown);
+canvas.addEventListener("touchend", onMouseUp);
+window.addEventListener("mouseup", onMouseUp);
+canvas.addEventListener("touchmove", onMouseMove);
+canvas.addEventListener("mousemove", onMouseMove);
 
-function down() {
+/**
+ * runs when the mouse is down, finds the closest ball to the cursor using the ballHandler quadtree
+ *
+ * @param {Vector}
+ */
+function onMouseDown() {
   mouseDown = true;
   const ballCandidates = ballHandler.getQuadtreeCandidates(mouseVector, 10, 10);
 
@@ -88,14 +94,19 @@ function down() {
   if (closestBall !== undefined) heldBallIndex = closestBall.index;
 }
 
-function up() {
+/**
+ * runs when the mouse goes from down to up.
+ */
+function onMouseUp() {
   mouseDown = false;
 }
 
-previousMouseVector = new Vector(0, 0);
-
-mouseVelocity = new Vector(0, 0);
-function move(e) {
+/**
+ * runs while the mouse moves. Handles mouse position calculations and calculates a velocity for the mouse which is used when spawning balls for some start velocity
+ *
+ * @param {*} e
+ */
+function onMouseMove(e) {
   mouseVector.x = e.clientX - 150;
   mouseVector.y = e.clientY;
 
@@ -117,8 +128,6 @@ var sound = new Howl({
   src: ["assets/bounce2.mp3"],
 });
 
-// Howler.volume(0.5);
-
 function handleCollision(ball) {
   if (!inputHandler.getValue("playSound")) return;
   var id = sound.play();
@@ -128,7 +137,6 @@ function handleCollision(ball) {
       inputHandler.getValue("soundVolume"),
     id
   );
-  // sound.fade(1, 0, 100, id);
 }
 
 function handleIntersect(ball, ball2) {
@@ -146,6 +154,7 @@ function handleIntersect(ball, ball2) {
   return false;
 }
 
+//initializes the input handler
 const inputHandler = new InputHandler();
 
 inputHandler.addContainer(document.getElementById("sidebar"));
@@ -170,31 +179,30 @@ resetButton.addEventListener("click", () => {
     canvas.height,
     ctx,
     bounceCoefficient,
-    undefined,
     handleCollision.bind(this),
     handleIntersect.bind(this)
   );
 });
 
-var lastCalledTime = 1;
-var fps = 0;
-
-ballHandler.addBall(new Ball(100, 100, new Vector(4, 4), 100, [255, 255, 255]));
-
+//initializes stats panel which shows fps among other things
 var stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.getElementById("canvas-container").appendChild(stats.dom);
 stats.dom.style.position = "absolute";
 
+var lastCalledTime = 1;
+/**
+ * the draw function, called every frame of the simulatin
+ */
 function draw() {
   stats.begin();
 
   inputHandler.updateInputs();
+
+  ballHandler.wrapAround = inputHandler.getValue("wrapAroundCheckbox");
   ballHandler.bounceCoefficient = inputHandler.getValue(
     "coefficientOfRestitution"
   );
-  ballHandler.wrapAround = inputHandler.getValue("wrapAroundCheckbox");
-  if (isNaN(ballHandler.bounceCoefficient)) ballHandler.bounceCoefficient = 0.5;
 
   selectedInteraction =
     interactionSelection.options[interactionSelection.selectedIndex].value;
@@ -209,22 +217,13 @@ function draw() {
     );
   }
 
-  if (!lastCalledTime) {
-    lastCalledTime = Date.now();
-    fps = 0;
-    return;
-  }
-  delta = (Date.now() - lastCalledTime) / 1000;
-  lastCalledTime = Date.now();
-  fps = 1 / delta;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ballHandler.update(Math.min(2, delta), applyAcceleration);
-
+  //sets the html cursor circle elements size based on the spawn radius html input
   cursorCircle.setAttribute("r", inputHandler.getValue("spawnRadius"));
 
+  //handles spawning and grabbing
   if (mouseDown) {
     switch (selectedInteraction) {
+      //creates some random semi random direction based on mouse velocity and spawns balls with that velocity
       case "spawn":
         velocity = mouseVelocity.copy();
         velocity.add(randomDirection());
@@ -247,6 +246,7 @@ function draw() {
           );
         }
         break;
+      //grabs the closest ball to the cursor and sets its velocity to the direction from the ball to the cursor
       case "grab":
         const ball = ballHandler.balls[heldBallIndex];
         if (!ball) break;
@@ -257,6 +257,16 @@ function draw() {
         break;
     }
   }
+
+  if (!lastCalledTime) {
+    lastCalledTime = Date.now();
+    return;
+  }
+  delta = (Date.now() - lastCalledTime) / 1000;
+  lastCalledTime = Date.now();
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ballHandler.update(Math.min(2, delta), applyAcceleration);
 
   if (inputHandler.getValue("visualizeQuadtree"))
     drawQuadtree(ballHandler.quadtree, ctx);

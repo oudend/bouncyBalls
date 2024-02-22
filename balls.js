@@ -1,3 +1,13 @@
+//File: balls.js
+//Author: Martin Terner
+//Date: 2024-02-22
+//Description: Ball classes for handling the balls.
+
+/**
+ * uuid generating function
+ *
+ * @returns {String} uuid
+ */
 function uuidv4() {
   return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
     (
@@ -7,7 +17,24 @@ function uuidv4() {
   );
 }
 
+/**
+ * Ball class used for drawing and moving balls as well as storing some ball related data among other things
+ *
+ * @class Ball
+ * @typedef {Ball}
+ */
 class Ball {
+  /**
+   * Creates an instance of Ball.
+   *
+   * @constructor
+   * @param {*} x - x cooordinate of balls position
+   * @param {*} y - y cooordinate of balls position
+   * @param {Vector} velocity - velocity of ball
+   * @param {Number} radius - radius of ball
+   * @param {*} color - color of ball
+   * @param {Number} [mass=radius] - mass of ball(defaults to radius)
+   */
   constructor(x, y, velocity, radius, color, mass = radius) {
     this.position = new Vector(x, y);
 
@@ -27,6 +54,14 @@ class Ball {
     this.index = -1;
   }
 
+  /**
+   * Returns whether or not the ball intersects with another ball with the given values
+   *
+   * @param {*} x - x coordinate of ball to compare to
+   * @param {*} y - y coordinate of ball to compare to
+   * @param {*} r - radius of ball to compare to
+   * @returns {boolean}
+   */
   intersects(x, y, r) {
     return (
       Math.hypot(this.position.x - x, this.position.y - y) <=
@@ -34,11 +69,21 @@ class Ball {
     );
   }
 
+  /**
+   * Moves the ball based on its velocity and a delta
+   *
+   * @param {Number} delta
+   */
   move(delta) {
     this.position.x += this.velocity.x * delta;
     this.position.y += this.velocity.y * delta;
   }
 
+  /**
+   * renders the ball to a ctx
+   *
+   * @param {*} ctx
+   */
   render(ctx) {
     ctx.beginPath();
     ctx.arc(this.position.x, this.position.y, this.radius / 2, 0, 2 * Math.PI);
@@ -47,13 +92,30 @@ class Ball {
   }
 }
 
+/**
+ * BouncyBallHandler class that handles collision calculations and such as well as storing all the balls.
+ *
+ * @class bouncyBallHandler
+ * @typedef {bouncyBallHandler}
+ */
 class bouncyBallHandler {
+  /**
+   * Creates an instance of bouncyBallHandler.
+   *
+   * @constructor
+   * @param {*} width - width of the domain
+   * @param {*} height - height of the domain
+   * @param {*} ctx - ctx of the canvas to draw to
+   * @param {number} [bounceCoefficient=0.5] - coefficient of restitution
+   * @param {*} onCollision - function to call when a collision is detected
+   * @param {() => boolean} [onIntersect=() => { return true; }] - function to call when a ball intersects with another ball
+   * @param {boolean} [wrapAround=true] - whether or not to wrap around the domain when a ball goes out of bounds.
+   */
   constructor(
     width,
     height,
     ctx,
     bounceCoefficient = 0.5,
-    frameRetrieve = 0,
     onCollision,
     onIntersect = () => {
       return true;
@@ -80,7 +142,6 @@ class bouncyBallHandler {
     );
 
     this.frame = 0;
-    this.frameRetrieve = frameRetrieve;
 
     this.firstFrame = true;
 
@@ -95,11 +156,21 @@ class bouncyBallHandler {
     this.bounceCoefficient = bounceCoefficient;
   }
 
+  /**
+   * removes the ball from the ballHandler.
+   *
+   * @param {*} ball
+   */
   removeBall(ball) {
     this.balls.splice(this.balls.indexOf(ball), 1);
-    // this.balls[ball.index] = undefined;
   }
 
+  /**
+   * adds a ball to the ballHandler.
+   *
+   * @param {*} ball
+   * @returns {*}
+   */
   addBall(ball) {
     this.newBall = true;
     this.balls.push(ball);
@@ -109,6 +180,12 @@ class bouncyBallHandler {
     return ball;
   }
 
+  /**
+   * gets quadtree object for a ball based on its index which includes data for the quadtree library
+   *
+   * @param {*} index
+   * @returns {{ x: any; y: any; width: any; height: any; radius: any; index: any; uuid: any; }}
+   */
   getQuadtreeObject(index) {
     let ball = this.balls[index];
 
@@ -125,10 +202,23 @@ class bouncyBallHandler {
     return myObject;
   }
 
+  /**
+   * updates the position of a ball in the quadtree based on its index.
+   *
+   * @param {*} index
+   */
   updateQuadtreePosition(index) {
     this.quadtree.insert(this.getQuadtreeObject(index));
   }
 
+  /**
+   * retrieves quadtree candidates/nearby elements based on position, width and height.
+   *
+   * @param {Vector} position
+   * @param {Number} width
+   * @param {Number} height
+   * @returns {*}
+   */
   getQuadtreeCandidates(position, width, height) {
     return this.quadtree.retrieve({
       x: position.x,
@@ -138,6 +228,13 @@ class bouncyBallHandler {
     });
   }
 
+  /**
+   * calculates the velocity for a ball.
+   *
+   * @param {*} ball - the ball whose velocity will be calculated.
+   * @param {*} ball2 - the ball whose velocity will be used to calculate the velocity of ball.
+   * @returns {Vector}
+   */
   calculateVelocity(ball, ball2) {
     var positionDiff = Vector.subtract(ball.position, ball2.position);
 
@@ -155,6 +252,12 @@ class bouncyBallHandler {
     return Vector.subtract(ball.newVelocity, positionDiff);
   }
 
+  /**
+   * recalculates the velocity for two balls assuming they collide.
+   *
+   * @param {*} ballA
+   * @param {*} ballB
+   */
   resolveCollision(ballA, ballB) {
     let ballAvelocity = this.calculateVelocity(ballA, ballB);
     ballB.newVelocity = this.calculateVelocity(ballB, ballA);
@@ -163,26 +266,15 @@ class bouncyBallHandler {
   }
 
   //https://codepen.io/gbnikolov/pen/mdLOayQ
+  /**
+   * code to smoothly adjust the positions of intersecting balls over multiple frames based on codepen above.
+   *
+   * @param {*} ballA - first ball
+   * @param {*} ballB - second ball
+   * @param {Number} depth - depth
+   */
   adjustPositions(ballA, ballB, depth) {
-    // var norm = Vector.subtract(ballB.position, ballA.position);
-    // // norm = Vector.scale(
-    // //   norm.normalize(),
-    // //   Vector.distance(ballA.position, ballB.position)
-    // // );
-    // norm.normalize();
-    // var distBetweenRadii =
-    //   Vector.distance(ballA.position, ballB.position) -
-    //   ballA.radius / 2 -
-    //   ballB.radius / 2;
-    // norm.multiply(distBetweenRadii / (ballA.mass + ballB.mass));
-
-    // ballA.newPosition.add(Vector.scale(norm, ballB.mass));
-    // ballB.newPosition.add(Vector.scale(norm, -1 * ballA.mass));
-
-    // return;
-
     var percent = 0.2;
-    // percent = 1 / Vector.distance(ballA.position, ballB.position);
     const slop = 0.01;
 
     var corr =
@@ -212,6 +304,12 @@ class bouncyBallHandler {
       Math.max(ballA.mass / (ballA.mass + ballB.mass), 0);
   }
 
+  /**
+   * checks ball and candidates for intersection and handles accordingly.
+   *
+   * @param {*} ball
+   * @param {*} candidates
+   */
   handleCollision(ball, candidates) {
     for (
       let candidateIndex = 0;
@@ -250,9 +348,14 @@ class bouncyBallHandler {
     }
   }
 
+  /**
+   * updates the entire simulation
+   *
+   * @param {Number} delta - delta time
+   * @param {(ball: any) => void} [ballUpdate=(ball) => {}]
+   */
   update(delta, ballUpdate = (ball) => {}) {
-    this.frameRetrieve = delta * 100;
-
+    //clears quadtree and sets the position of all balls in the quadtree again, effectively updating their positions
     this.quadtree.clear();
 
     for (let ballIndex = 0; ballIndex < this.balls.length; ballIndex++) {
@@ -272,6 +375,7 @@ class bouncyBallHandler {
       this.updateQuadtreePosition(ballIndex);
     }
 
+    //gets candidates and handles collisions as well as boundary bounces for all balls.
     for (let ballIndex = 0; ballIndex < this.balls.length; ballIndex++) {
       let ball = this.balls[ballIndex];
 
@@ -334,7 +438,6 @@ class bouncyBallHandler {
         ball.newPosition.x = this.width - ball.radius / 2;
       }
     }
-    // if (this.firstFrame || this.newBall) console.log("?", this.frameRetrieve);
 
     this.frame++;
 
